@@ -2,6 +2,8 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcodeTerminal = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 let latestQrDataUrl = null;
 let isReady = false;
@@ -20,13 +22,30 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+// Locate Chrome for the current OS; CHROME_PATH overrides, and undefined falls back to Puppeteer's own browser
+function findChrome() {
+    if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+
+    const candidates = {
+        darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
+        win32: [
+            process.env.PROGRAMFILES,
+            process.env['PROGRAMFILES(X86)'],
+            process.env.LOCALAPPDATA
+        ].filter(Boolean).map(dir => path.join(dir, 'Google', 'Chrome', 'Application', 'chrome.exe')),
+        linux: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser']
+    }[process.platform] || [];
+
+    return candidates.find(p => fs.existsSync(p));
+}
+
 // Initialize WhatsApp client
 const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: './.wwebjs_auth'
     }),
     puppeteer: {
-        executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath: findChrome(),
         headless: true,
         args: [
             '--no-sandbox',
