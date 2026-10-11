@@ -10,6 +10,16 @@ let clientInfo = null;
 const TARGET_GROUP_ID = '120363039581616863@g.us';
 const TARGET_KEYWORD = 'چکاوک';
 
+// Escape text before placing it into the dashboard HTML
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Initialize WhatsApp client
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -149,6 +159,12 @@ const server = http.createServer(async (req, res) => {
 
     // API to send message to Chakavak
     if (url.pathname === '/api/chakavak/send' && req.method === 'POST') {
+        // Browsers can't send JSON cross-site without a preflight, so this blocks other websites from posting
+        if (!(req.headers['content-type'] || '').startsWith('application/json')) {
+            res.writeHead(415, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Content-Type must be application/json' }));
+            return;
+        }
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
@@ -182,8 +198,8 @@ const server = http.createServer(async (req, res) => {
             return `
                 <div style="display: flex; justify-content: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">
                     <div style="max-width: 75%; background: ${isMe ? '#005c4b' : '#202c33'}; color: #e9edef; padding: 10px 14px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); font-size: 14px; direction: rtl; text-align: right;">
-                        ${!isMe ? `<div style="font-weight: 600; color: #53bdeb; font-size: 12px; margin-bottom: 4px;">${m.author} ${m.authorPhone ? `(${m.authorPhone})` : ''}</div>` : ''}
-                        <div style="white-space: pre-wrap; line-height: 1.5;">${m.body}</div>
+                        ${!isMe ? `<div style="font-weight: 600; color: #53bdeb; font-size: 12px; margin-bottom: 4px;">${escapeHtml(m.author)} ${m.authorPhone ? `(${escapeHtml(m.authorPhone)})` : ''}</div>` : ''}
+                        <div style="white-space: pre-wrap; line-height: 1.5;">${escapeHtml(m.body)}</div>
                         <div style="font-size: 10px; color: ${isMe ? '#7cc5af' : '#8696a0'}; text-align: left; margin-top: 4px; direction: ltr;">${timeStr}</div>
                     </div>
                 </div>
@@ -233,7 +249,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const PORT = 3000;
-server.listen(PORT, () => {
+// Bind to localhost only so other devices on the network can't reach the dashboard or API
+server.listen(PORT, '127.0.0.1', () => {
     console.log(`[Focus Mode] Web viewer running at: http://localhost:${PORT}`);
 });
 
