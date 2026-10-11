@@ -1,0 +1,14 @@
+# WhatsApp login sessions (credentials — never commit)
+.wwebjs_auth/
+.wwebjs_cache/
+whatsapp_session_py/
+
+# Dependencies
+node_modules/
+.venv/
+
+# Caches and editor files
+__pycache__/
+*.pyc
+.idea/
+.DS_Store
